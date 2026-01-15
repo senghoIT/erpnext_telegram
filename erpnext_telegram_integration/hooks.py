@@ -198,3 +198,13 @@ scheduler_events = {
 # override_doctype_dashboards = {
 # 	"Task": "erpnext_telegram_integration.task.get_dashboard_data"
 # }
+
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["dt", "in", {"Telegram Notification"}]
+        ]
+    }
+    
+]

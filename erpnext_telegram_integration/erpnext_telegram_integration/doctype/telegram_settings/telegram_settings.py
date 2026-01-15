@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+import os
 import frappe
 import telegram
 import asyncio
@@ -19,7 +20,7 @@ class TelegramSettings(Document):
 
 
 @frappe.whitelist()
-def send_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+def send_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None,show_link=False):
 
 	space = "\n" * 2
 	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
@@ -29,11 +30,14 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 
 
 	if reference_doctype and reference_name:
-		doc_url = get_url_to_form(reference_doctype, reference_name)
-		telegram_doc_link = _("See the document at {0}").format(doc_url)
+		if show_link:
+			doc_url = get_url_to_form(reference_doctype, reference_name)
+			telegram_doc_link = _("See the document at {0}").format(doc_url)
 		if message:
 			soup = BeautifulSoup(message)
-			message = soup.get_text('\n') + space + str(telegram_doc_link)
+			if show_link:
+				message = soup.get_text('\n') + space + str(telegram_doc_link)
+			message = soup.get_text('\n')
 			if type(attachment) is str:
 				attachment = int(attachment)
 			else:
@@ -42,11 +46,82 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 			if attachment == 1:
 				attachment_url =get_url_for_telegram(reference_doctype, reference_name)
 				message = message + space +  attachment_url
-			asyncio.run(bot.send_message(chat_id=telegram_chat_id, text=message))
-		
-	else:
-		message = space + str(message) + space
-		asyncio.run(bot.send_message(chat_id=telegram_chat_id, text=message))
+			try:
+				loop = asyncio.get_running_loop()
+			except RuntimeError:
+				loop = None
+			
+			if loop and loop.is_running():
+				# loop.create_task(send_to_telegram_async(bot=bot,telegram_chat_id=telegram_chat_id,message=message,reference_doctype=reference_doctype,reference_name=reference_name))
+				loop.create_task(bot.send_message(chat_id=telegram_chat_id, text=message))
+			else:
+				asyncio.run(bot.send_message(chat_id=telegram_chat_id, text=message))
+		else:
+			message = space + str(message) + space
+
+
+
+
+@frappe.whitelist()
+def send_to_image_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+	
+	space = "\n" * 2
+	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
+	telegram_settings = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_settings')
+	telegram_token = frappe.db.get_value('Telegram Settings', telegram_settings,'telegram_token')
+	bot = telegram.Bot(token=telegram_token)
+
+	if reference_doctype and reference_name:
+		if message:
+			soup = BeautifulSoup(message)
+			message = soup.get_text('\n')
+			doc = frappe.get_doc(reference_doctype, reference_name)
+			try:
+				loop = asyncio.get_running_loop()
+			except RuntimeError:
+				loop = None
+			if loop and loop.is_running():
+				file_path = frappe.get_site_path(doc.photo.lstrip('/'))
+				if not os.path.exists(file_path):
+					frappe.throw(f"File not found at {file_path}")
+				with open(file_path, 'rb') as photo_file:
+					loop.create_task(bot.send_photo(chat_id=telegram_chat_id, photo=photo_file,caption=f"{message}"))
+			else:
+				file_path = frappe.get_site_path(doc.photo.lstrip('/'))
+				if not os.path.exists(file_path):
+					frappe.throw(f"File not found at {file_path}")
+				with open(file_path, 'rb') as photo_file:
+					asyncio.run(bot.send_photo(chat_id=telegram_chat_id,photo=photo_file,caption=f"{message}"))
+		else:
+			message = space + str(message) + space
+
+
+@frappe.whitelist()
+def send_location_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None,lat='latitude',long='longitude'):
+
+	space = "\n" * 2
+	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
+	telegram_settings = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_settings')
+	telegram_token = frappe.db.get_value('Telegram Settings', telegram_settings,'telegram_token')
+	bot = telegram.Bot(token=telegram_token)
+
+
+	if reference_doctype and reference_name:
+		if message:
+			soup = BeautifulSoup(message)
+			message = soup.get_text('\n')
+			doc = frappe.get_doc(reference_doctype, reference_name)
+			try:
+				loop = asyncio.get_running_loop()
+			except RuntimeError:
+				loop = None
+			if loop and loop.is_running():
+				# loop.create_task(send_to_telegram_async(bot=bot,telegram_chat_id=telegram_chat_id,message=message,reference_doctype=reference_doctype,reference_name=reference_name))
+				loop.create_task(bot.send_location(chat_id=telegram_chat_id,latitude=doc.get(lat),longitude=doc.get(long)))
+			else:
+				asyncio.run(bot.send_location(chat_id=telegram_chat_id,latitude=doc.get(lat),longitude=doc.get(long)))
+		else:
+			message = space + str(message) + space
 
 
 

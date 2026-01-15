@@ -20,6 +20,8 @@ from frappe.modules.utils import export_module_json, get_doc_module
 from six import string_types
 from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import (
 	send_to_telegram,
+	send_location_to_telegram,
+	send_to_image_telegram
 )
 
 
@@ -207,13 +209,58 @@ def get_context(context):
 		message = message + frappe.render_template(self.message, context)
 		attachment = self.get_attachment(doc)
 		for telegram_user in recipients_telegram_user_list:
-			send_to_telegram(
-				telegram_user=telegram_user,
-				message=message,
-				reference_doctype=doc.doctype,
-				reference_name=doc.name,
-				attachment=attachment,
-			)
+			# add to background job queue
+			if doc.send_photo == 0:
+				frappe.enqueue(
+					method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_to_telegram",
+					telegram_user=telegram_user,
+					message=message,
+					reference_doctype=doc.doctype,
+					reference_name=doc.name,
+					attachment=attachment, 
+					queue="short"
+				)
+			# send_to_telegram(
+			# 	telegram_user=telegram_user,
+			# 	message=message,
+			# 	reference_doctype=doc.doctype,
+			# 	reference_name=doc.name,
+			# 	attachment=attachment,
+			# )
+			
+			
+			if self.get("custom_send_photo") == 1:
+				frappe.enqueue(
+						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_to_image_telegram",
+						telegram_user=telegram_user,
+						message=message,
+						reference_doctype=doc.doctype,
+						reference_name=doc.name, queue="short"
+					)
+				# send_to_image_telegram(
+				# 	telegram_user=telegram_user,
+				# 	message=message,
+				# 	reference_doctype=doc.doctype,
+				# 	reference_name=doc.name,
+				# )
+			if self.get("custom_send_location") == 1:
+				frappe.enqueue(
+						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_location_to_telegram",
+						telegram_user=telegram_user,
+						message=message,
+						reference_doctype=doc.doctype,
+						reference_name=doc.name,
+						lat= self.custom_latitude_field_name,
+						long= self.custom_longitude_field_name, queue="short"
+					)
+				# send_location_to_telegram(
+				# 	telegram_user=telegram_user,
+				# 	message=message,
+				# 	reference_doctype=doc.doctype,
+				# 	reference_name=doc.name,
+				# 	lat= self.custom_latitude_field_name,
+				# 	long= self.custom_longitude_field_name
+				# )
 
 			doc.message_notification = message
 			doc.from_user = frappe.session.user
@@ -474,5 +521,8 @@ def creat_extra_notification_log(doc):
 	enl_doc.party_type = doc.party_type
 	enl_doc.to_party = doc.to_party
 	enl_doc.from_user = doc.from_user
+	enl_doc.location = frappe.as_json(doc)
+	enl_doc.photo = doc.photo
+	
 
 	enl_doc.insert(ignore_permissions=True)
