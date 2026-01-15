@@ -18,11 +18,7 @@ from frappe.utils import (
 from frappe.utils.jinja import validate_template
 from frappe.modules.utils import export_module_json, get_doc_module
 from six import string_types
-from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import (
-	send_to_telegram,
-	send_location_to_telegram,
-	send_to_image_telegram
-)
+
 
 
 class TelegramNotification(Document):
@@ -210,14 +206,14 @@ def get_context(context):
 		attachment = self.get_attachment(doc)
 		for telegram_user in recipients_telegram_user_list:
 			# add to background job queue
-			if doc.send_photo == 0:
+			if self.get("custom_send_photo") == 0:
 				frappe.enqueue(
 					method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_to_telegram",
 					telegram_user=telegram_user,
 					message=message,
 					reference_doctype=doc.doctype,
 					reference_name=doc.name,
-					attachment=attachment, 
+					attachment=attachment,
 					queue="short"
 				)
 			# send_to_telegram(
