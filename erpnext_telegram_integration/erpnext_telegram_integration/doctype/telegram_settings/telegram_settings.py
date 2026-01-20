@@ -12,6 +12,7 @@ from frappe.utils import get_url_to_form
 from frappe.utils.data import quoted
 from frappe import _
 from bs4 import BeautifulSoup
+from frappe.utils.file_manager import get_file_path
 
 
 class TelegramSettings(Document):
@@ -63,7 +64,7 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 
 
 @frappe.whitelist()
-def send_to_image_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
 	
 	space = "\n" * 2
 	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
@@ -80,22 +81,42 @@ def send_to_image_telegram(telegram_user, message, reference_doctype=None, refer
 				loop = asyncio.get_running_loop()
 			except RuntimeError:
 				loop = None
+			file_doc = frappe.get_doc("File", {"attached_to_doctype": reference_doctype, "attached_to_name": reference_name})
+			file_path = file_doc.get_full_path()
 			if loop and loop.is_running():
-				file_path = frappe.get_site_path(doc.photo.lstrip('/'))
-				if not os.path.exists(file_path):
-					frappe.throw(f"File not found at {file_path}")
-				with open(file_path, 'rb') as photo_file:
-					loop.create_task(bot.send_photo(chat_id=telegram_chat_id, photo=photo_file,caption=f"{message}"))
+				if os.path.exists(file_path):
+					with open(file_path, 'rb') as photo_file:
+						try:
+							# Attempt to get existing loop or run new one
+							loop = asyncio.new_event_loop()
+							asyncio.set_event_loop(loop)
+							loop.run_until_complete(bot.send_photo(
+								chat_id=telegram_chat_id, 
+								photo=photo_file, 
+								caption=message
+							))
+						except Exception as e:
+							loop = asyncio.new_event_loop()
+							asyncio.set_event_loop(loop)
+							loop.run_until_complete(bot.send_message(
+								chat_id=telegram_chat_id, 
+								text=message, 
+								caption=message
+							))
+							frappe.log_error(f"Telegram Send Error: {e}")
 			else:
-				file_path = frappe.get_site_path(doc.photo.lstrip('/'))
-				if not os.path.exists(file_path):
-					frappe.throw(f"File not found at {file_path}")
-				with open(file_path, 'rb') as photo_file:
-					asyncio.run(bot.send_photo(chat_id=telegram_chat_id,photo=photo_file,caption=f"{message}"))
-		else:
-			message = space + str(message) + space
-
-
+				if os.path.exists(file_path):
+					with open(file_path, 'rb') as photo_file:
+						try:
+							# Attempt to get existing loop or run new one
+							asyncio.run(bot.send_photo(chat_id=telegram_chat_id,photo=photo_file,caption=f"{message}"))
+						except Exception as e:
+							asyncio.run(bot.send_message(
+								chat_id=telegram_chat_id, 
+								text=message
+							))
+							frappe.log_error(f"Telegram Send Error: {e}")
+		
 @frappe.whitelist()
 def send_location_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None,lat='latitude',long='longitude'):
 
