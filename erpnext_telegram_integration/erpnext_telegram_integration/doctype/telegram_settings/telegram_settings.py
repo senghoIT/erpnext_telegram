@@ -64,7 +64,7 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 
 
 @frappe.whitelist()
-def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+async def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
 	
 	space = "\n" * 2
 	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')

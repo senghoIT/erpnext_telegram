@@ -197,7 +197,7 @@ def get_context(context):
 					recipients_telegram_user_list.append(i.name)
 		return recipients_telegram_user_list
 
-	def send_a_telegram_msg(self, doc, context):
+	async def send_a_telegram_msg(self, doc, context):
 		recipients_telegram_user_list = []
 		if self.telegram_user:
 			recipients_telegram_user_list.append(self.telegram_user)
@@ -239,10 +239,10 @@ def get_context(context):
 					)
 				else:
 					send_to_telegram(telegram_user=telegram_user,
-					message=message,
-					reference_doctype=doc.doctype,
-					reference_name=doc.name,
-					attachment=attachment)
+						message=message,
+						reference_doctype=doc.doctype,
+						reference_name=doc.name,
+						attachment=attachment)
 
 			if self.get("custom_send_location") == 1:
 				if self.get("custom_use_queue"):
