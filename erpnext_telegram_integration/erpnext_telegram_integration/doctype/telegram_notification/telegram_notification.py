@@ -19,7 +19,7 @@ from frappe.utils.jinja import validate_template
 from frappe.modules.utils import export_module_json, get_doc_module
 from six import string_types
 
-# from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import send_location_to_telegram, send_to_image_telegram, send_to_image_telegram, send_to_telegram
+from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import send_location_to_telegram, send_image_to_telegram, send_to_telegram
 
 
 
@@ -207,43 +207,47 @@ def get_context(context):
 		message = message + frappe.render_template(self.message, context)
 		attachment = self.get_attachment(doc)
 		for telegram_user in recipients_telegram_user_list:
-			# add to background job queue
-			if self.get("custom_send_photo") == 0:
-				frappe.enqueue(
-					method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_to_telegram",
-					telegram_user=telegram_user,
-					message=message,
-					reference_doctype=doc.doctype,
-					reference_name=doc.name,
-					attachment=attachment,
-					queue="short"
-				)
-				# send_to_telegram(
-				# 	telegram_user=telegram_user,
-				# 	message=message,
-				# 	reference_doctype=doc.doctype,
-				# 	reference_name=doc.name,
-				# 	attachment=attachment,
-				# )
 			
+
 			
 			if self.get("custom_send_photo") == 1:
-				frappe.enqueue(
-						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_image_to_telegram",
+				if self.get("custom_use_queue"):
+					frappe.enqueue(
+							method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings.send_image_to_telegram",
+							telegram_user=telegram_user,
+							message=message,
+							reference_doctype=doc.doctype,
+							reference_name=doc.name, queue="short"
+						)
+				else:
+					send_image_to_telegram(
+						telegram_user=telegram_user,
+							message=message,
+							reference_doctype=doc.doctype,
+							reference_name=doc.name
+					)
+			else:
+				if self.get("custom_use_queue"):
+					frappe.enqueue(
+						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings.send_to_telegram",
 						telegram_user=telegram_user,
 						message=message,
 						reference_doctype=doc.doctype,
-						reference_name=doc.name, queue="short"
+						reference_name=doc.name,
+						attachment=attachment,
+						queue="short"
 					)
-				# send_to_image_telegram(
-				# 	telegram_user=telegram_user,
-				# 	message=message,
-				# 	reference_doctype=doc.doctype,
-				# 	reference_name=doc.name,
-				# )
+				else:
+					send_to_telegram(telegram_user=telegram_user,
+					message=message,
+					reference_doctype=doc.doctype,
+					reference_name=doc.name,
+					attachment=attachment)
+
 			if self.get("custom_send_location") == 1:
-				frappe.enqueue(
-						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_notification.telegram_notification.send_location_to_telegram",
+				if self.get("custom_use_queue"):
+					frappe.enqueue(
+						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings.send_location_to_telegram",
 						telegram_user=telegram_user,
 						message=message,
 						reference_doctype=doc.doctype,
@@ -251,14 +255,15 @@ def get_context(context):
 						lat= self.custom_latitude_field_name,
 						long= self.custom_longitude_field_name, queue="short"
 					)
-				# send_location_to_telegram(
-				# 	telegram_user=telegram_user,
-				# 	message=message,
-				# 	reference_doctype=doc.doctype,
-				# 	reference_name=doc.name,
-				# 	lat= self.custom_latitude_field_name,
-				# 	long= self.custom_longitude_field_name
-				# )
+				else:
+					send_location_to_telegram(
+						telegram_user=telegram_user,
+						message=message,
+						reference_doctype=doc.doctype,
+						reference_name=doc.name,
+						lat= self.custom_latitude_field_name,
+						long= self.custom_longitude_field_name
+					)
 
 			doc.message_notification = message
 			doc.from_user = frappe.session.user

@@ -84,36 +84,29 @@ def send_image_to_telegram(telegram_user, message, reference_doctype=None, refer
 			file_doc = frappe.get_doc("File", {"attached_to_doctype": reference_doctype, "attached_to_name": reference_name})
 			file_path = file_doc.get_full_path()
 			if loop and loop.is_running():
-				if os.path.exists(file_path):
+				async def send_async():
 					with open(file_path, 'rb') as photo_file:
 						try:
-							# Attempt to get existing loop or run new one
-							loop = asyncio.new_event_loop()
-							asyncio.set_event_loop(loop)
-							loop.run_until_complete(bot.send_photo(
-								chat_id=telegram_chat_id, 
-								photo=photo_file, 
-								caption=message
-							))
+							await bot.send_photo(chat_id=telegram_chat_id, photo=photo_file, caption=message,read_timeout=60,
+                write_timeout=60, 
+                connect_timeout=30)
 						except Exception as e:
-							loop = asyncio.new_event_loop()
-							asyncio.set_event_loop(loop)
-							loop.run_until_complete(bot.send_message(
-								chat_id=telegram_chat_id, 
-								text=message, 
-								caption=message
-							))
+							await bot.send_message(chat_id=telegram_chat_id, text=f"{message}\n {e}")
 							frappe.log_error(f"Telegram Send Error: {e}")
+				loop.create_task(send_async())
 			else:
 				if os.path.exists(file_path):
 					with open(file_path, 'rb') as photo_file:
 						try:
-							# Attempt to get existing loop or run new one
-							asyncio.run(bot.send_photo(chat_id=telegram_chat_id,photo=photo_file,caption=f"{message}"))
+							asyncio.run(bot.send_photo(chat_id=telegram_chat_id,
+								photo=photo_file,caption=f"{message}"),
+								read_timeout=60,
+                				write_timeout=60, 
+                				connect_timeout=30)
 						except Exception as e:
 							asyncio.run(bot.send_message(
 								chat_id=telegram_chat_id, 
-								text=message
+								text=f"{message}\n {e}" 
 							))
 							frappe.log_error(f"Telegram Send Error: {e}")
 		
