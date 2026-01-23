@@ -55,18 +55,18 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 			if loop and loop.is_running():
 				# loop.create_task(send_to_telegram_async(bot=bot,telegram_chat_id=telegram_chat_id,message=message,reference_doctype=reference_doctype,reference_name=reference_name))
 				loop.create_task(bot.send_message(chat_id=telegram_chat_id, text=message))
+				
 			else:
 				asyncio.run(bot.send_message(chat_id=telegram_chat_id, text=message))
+				print(a.media_group_id)
 		else:
 			message = space + str(message) + space
-
-
+		print(message)
 
 
 @frappe.whitelist()
-async def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
 	
-	space = "\n" * 2
 	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
 	telegram_settings = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_settings')
 	telegram_token = frappe.db.get_value('Telegram Settings', telegram_settings,'telegram_token')

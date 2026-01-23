@@ -134,6 +134,7 @@ def get_context(context):
 		return docs
 
 	def send(self, doc):
+		
 		"""Build recipients and send Notification"""
 
 		context = get_context(doc)
@@ -143,7 +144,6 @@ def get_context(context):
 
 		if self.is_standard:
 			self.load_standard_properties(context)
-
 		if self.channel == "Telegram":
 			self.send_a_telegram_msg(doc, context)
 
@@ -197,7 +197,7 @@ def get_context(context):
 					recipients_telegram_user_list.append(i.name)
 		return recipients_telegram_user_list
 
-	async def send_a_telegram_msg(self, doc, context):
+	def send_a_telegram_msg(self, doc, context):
 		recipients_telegram_user_list = []
 		if self.telegram_user:
 			recipients_telegram_user_list.append(self.telegram_user)
@@ -206,10 +206,8 @@ def get_context(context):
 		message = frappe.render_template(self.subject, context) + space
 		message = message + frappe.render_template(self.message, context)
 		attachment = self.get_attachment(doc)
-		for telegram_user in recipients_telegram_user_list:
-			
 
-			
+		for telegram_user in recipients_telegram_user_list:
 			if self.get("custom_send_photo") == 1:
 				if self.get("custom_use_queue"):
 					frappe.enqueue(
@@ -525,7 +523,7 @@ def creat_extra_notification_log(doc):
 	enl_doc.to_party = doc.to_party
 	enl_doc.from_user = doc.from_user
 	enl_doc.location = frappe.as_json(doc)
-	enl_doc.photo = doc.photo
+	enl_doc.photo = doc.get("photo")
 	
 
 	enl_doc.insert(ignore_permissions=True)
