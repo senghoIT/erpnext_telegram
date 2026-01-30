@@ -58,14 +58,13 @@ def send_to_telegram(telegram_user, message, reference_doctype=None, reference_n
 				
 			else:
 				asyncio.run(bot.send_message(chat_id=telegram_chat_id, text=message))
-				print(a.media_group_id)
+
 		else:
 			message = space + str(message) + space
-		print(message)
 
 
 @frappe.whitelist()
-def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None):
+def send_image_to_telegram(telegram_user, message, reference_doctype=None, reference_name=None, attachment=None,send_location=0):
 	
 	telegram_chat_id = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_chat_id')
 	telegram_settings = frappe.db.get_value('Telegram User Settings', telegram_user,'telegram_settings')
@@ -90,6 +89,8 @@ def send_image_to_telegram(telegram_user, message, reference_doctype=None, refer
 							await bot.send_photo(chat_id=telegram_chat_id, photo=photo_file, caption=message,read_timeout=60,
                 write_timeout=60, 
                 connect_timeout=30)
+							if send_location == 1:
+								await bot.send_location(chat_id=telegram_chat_id,latitude=doc.latitude,longitude=doc.longitude)
 						except Exception as e:
 							await bot.send_message(chat_id=telegram_chat_id, text=f"{message}\n {e}")
 							frappe.log_error(f"Telegram Send Error: {e}")
@@ -99,10 +100,12 @@ def send_image_to_telegram(telegram_user, message, reference_doctype=None, refer
 					with open(file_path, 'rb') as photo_file:
 						try:
 							asyncio.run(bot.send_photo(chat_id=telegram_chat_id,
-								photo=photo_file,caption=f"{message}"),
-								read_timeout=60,
+								photo=photo_file,caption=f"{message}",read_timeout=60,
                 				write_timeout=60, 
                 				connect_timeout=30)
+								)
+							if send_location == 1:
+								asyncio.run(bot.send_location(chat_id=telegram_chat_id,latitude=doc.latitude,longitude=doc.longitude))
 						except Exception as e:
 							asyncio.run(bot.send_message(
 								chat_id=telegram_chat_id, 

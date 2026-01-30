@@ -19,7 +19,7 @@ from frappe.utils.jinja import validate_template
 from frappe.modules.utils import export_module_json, get_doc_module
 from six import string_types
 
-from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import send_location_to_telegram, send_image_to_telegram, send_to_telegram
+from erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings import  send_location_to_telegram, send_image_to_telegram, send_to_telegram
 
 
 
@@ -222,7 +222,9 @@ def get_context(context):
 						telegram_user=telegram_user,
 							message=message,
 							reference_doctype=doc.doctype,
-							reference_name=doc.name
+							reference_name=doc.name,
+							send_location=self.get("custom_send_location")
+
 					)
 			else:
 				if self.get("custom_use_queue"):
@@ -242,7 +244,7 @@ def get_context(context):
 						reference_name=doc.name,
 						attachment=attachment)
 
-			if self.get("custom_send_location") == 1:
+			if self.get("custom_send_location") == 1 and self.get("custom_send_photo") == 0:
 				if self.get("custom_use_queue"):
 					frappe.enqueue(
 						method="erpnext_telegram_integration.erpnext_telegram_integration.doctype.telegram_settings.telegram_settings.send_location_to_telegram",
